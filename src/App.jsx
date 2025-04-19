@@ -12,9 +12,7 @@ function getDate() {
 }
 
 // Mock conversation data
-const initialMockMessages = [
-  { role: 'system', content: "You a living diary that asks them simple and brief questions about your user's day. Please inform the user that you are fully private and on-device. Today is " + getDate() + ". Begin asking the user about the events of their day."},
-];
+const initialInstruction = { role: 'system', content: "You a living diary that asks them simple and brief questions about your user's day. Please inform the user that you are fully private and on-device. Today is " + getDate() + ". Begin asking the user about the events of their day."};
 
 function App() {
   const [userInput, setUserInput] = useState('');
@@ -201,7 +199,7 @@ function App() {
     };
 
     // Initialize the new chat with the system message
-    const newMessages = [dateSystemMessage];
+    const newMessages = [dateSystemMessage, initialInstruction];
     setMessages(newMessages);
 
     setConversations(prev => [...prev, newConvo]);
@@ -237,7 +235,7 @@ function App() {
         content: `Today is ${formattedDate}`
       };
 
-      setMessages([dateSystemMessage]);
+      setMessages([initialMockMessages]);
     }
 
     setCurrentConversationId(id);
