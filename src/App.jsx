@@ -43,7 +43,12 @@ function App() {
     } else {
       // Create default conversation if none exists
       const newId = Date.now();
-      const newConversations = [{ id: newId, title: 'New Chat' }];
+      const today = new Date();
+      const formattedDate = today.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+      const newConversations = [{ id: newId, title: `[${formattedDate}] Entry` }];
       setConversations(newConversations);
       setCurrentConversationId(newId);
       localStorage.setItem('conversations', JSON.stringify(newConversations));
@@ -156,6 +161,46 @@ function App() {
     }
   };
 
+  // Function to start a new chat
+  const handleNewChat = () => {
+    // Save current conversation messages
+    if (currentConversationId && messages.length > 0) {
+      localStorage.setItem(`messages-${currentConversationId}`, JSON.stringify(messages));
+    }
+
+    const newId = Date.now();
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+    const newConvo = { id: newId, title: `${formattedDate} Entry` };
+
+    // Create a system message with today's date
+    const todayDate = new Date();
+    const formattedTodayDate = todayDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const dateSystemMessage = {
+      role: 'system',
+      content: `Today is ${formattedTodayDate}`
+    };
+
+    // Initialize the new chat with the system message
+    const newMessages = [dateSystemMessage];
+    setMessages(newMessages);
+
+    setConversations(prev => [...prev, newConvo]);
+    setCurrentConversationId(newId);
+
+    // Save the system message to localStorage for this conversation
+    localStorage.setItem(`messages-${newId}`, JSON.stringify(newMessages));
+  };
+
   // Function to switch conversations
   const handleSelectConversation = (id) => {
     // Save current messages before switching
@@ -168,31 +213,31 @@ function App() {
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
     } else {
-      setMessages([]);
+      // If no messages exist for this conversation, initialize with a system date message
+      const today = new Date();
+      const formattedDate = today.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      const dateSystemMessage = {
+        role: 'system',
+        content: `Today is ${formattedDate}`
+      };
+
+      setMessages([dateSystemMessage]);
     }
 
     setCurrentConversationId(id);
-  };
-
-  // Function to start a new chat
-  const handleNewChat = () => {
-    // Save current conversation messages
-    if (currentConversationId && messages.length > 0) {
-      localStorage.setItem(`messages-${currentConversationId}`, JSON.stringify(messages));
-    }
-
-    const newId = Date.now();
-    const newConvo = { id: newId, title: `New Chat` };
-    setConversations(prev => [...prev, newConvo]);
-    setMessages([]);
-    setCurrentConversationId(newId);
   };
 
   return (
     <div className="app-container">
       <aside className="sidebar">
         <h2>Diary Entries</h2>
-        <button onClick={handleNewChat} className="new-chat-button">New Chat</button>
+        <button onClick={handleNewChat} className="new-chat-button">New Entry</button>
         <ul>
           {conversations.map((convo) => (
             <li
