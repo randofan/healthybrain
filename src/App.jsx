@@ -220,22 +220,6 @@ function App() {
     const savedMessages = localStorage.getItem(`messages-${id}`);
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
-    } else {
-      // If no messages exist for this conversation, initialize with a system date message
-      const today = new Date();
-      const formattedDate = today.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-
-      const dateSystemMessage = {
-        role: 'system',
-        content: `Today is ${formattedDate}`
-      };
-
-      setMessages([initialMockMessages]);
     }
 
     setCurrentConversationId(id);
