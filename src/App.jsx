@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
+import ics from './assets/schedule.txt';
+import parseICSForLLM from './ics.js';
 
 function getDate() {
   const currentDate = new Date();
@@ -11,8 +13,11 @@ function getDate() {
   return formattedDate;
 }
 
-// Mock conversation data
-const initialInstruction = { role: 'system', content: "You a living diary that asks them simple and brief questions about your user's day. Please inform the user that you are fully private and on-device. Today is " + getDate() + ". Begin asking the user about the events of their day."};
+async function parseICS() {
+  let res = '';
+  const temp = await fetch(ics).then((res) => res.text()).then((text) => {res = text}).catch((e) => console.error(e));
+  return parseICSForLLM(res);
+}
 
 function App() {
   const [userInput, setUserInput] = useState('');
@@ -170,7 +175,7 @@ function App() {
   };
 
   // Function to start a new chat
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     // Save current conversation messages
     if (currentConversationId && messages.length > 0) {
       localStorage.setItem(`messages-${currentConversationId}`, JSON.stringify(messages));
@@ -197,6 +202,14 @@ function App() {
       role: 'system',
       content: `Today is ${formattedTodayDate}`
     };
+
+    let ics_plaintext = ''
+    const res = await parseICS();
+
+    console.log(res + "ASDFASDF")
+
+    // Mock conversation data
+    const initialInstruction = { role: 'system', content: "You a living diary that asks them simple and brief questions about your user's day. Please inform the user that you are fully private and on-device. Today is " + getDate() + ". Here is an ics file of their schedule that contains information on what they have done: " + res + ".\nBegin asking the user about the events of their day."};
 
     // Initialize the new chat with the system message
     const newMessages = [dateSystemMessage, initialInstruction];
@@ -244,7 +257,7 @@ function App() {
       </aside>
       <main className="chat-window">
         <div className="messages-container">
-          {messages.filter((msg) => msg.role != 'system').map((msg, index) => (
+          {messages.filter((msg) => msg.role != 'system1').map((msg, index) => (
             <div key={index} className={`message-row ${msg.role}`}>
               <div className={`message-bubble ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                 {msg.content}
