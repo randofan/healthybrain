@@ -1,25 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
-// Mock conversation data
-const initialMockMessages = [
-  { role: 'user', content: 'Hello Llama!' },
-  { role: 'assistant', content: 'Hello! How can I help you today?' },
-  { role: 'user', content: 'Can you explain what a large language model is?' },
-  { role: 'assistant', content: 'A large language model (LLM) is a type of artificial intelligence algorithm that uses deep learning techniques and massively large data sets to understand, summarize, generate, and predict new content.' },
-  { role: 'user', content: 'That makes sense. What are some examples?' },
-  { role: 'assistant', content: 'Examples include models like me (Llama), GPT-4, Gemini, Claude, and others. They power applications like chatbots, content generation tools, and translation services.' },
-  { role: 'user', content: 'Interesting. How do they learn?' },
-  { role: 'assistant', content: 'They learn by being trained on vast amounts of text data from the internet and books. During training, they learn patterns, grammar, facts, and reasoning abilities.' },
-  { role: 'user', content: 'Thanks for the explanation!' },
-  { role: 'assistant', content: 'You\'re welcome! Is there anything else I can help you with?' },
-];
-
 function App() {
   const [userInput, setUserInput] = useState('');
-  const [messages, setMessages] = useState(initialMockMessages); // Stores messages for the current chat { role: 'user' | 'assistant', content: string }
+  const [messages, setMessages] = useState([]); // Initialize with empty array instead of mock messages
   const [conversations, setConversations] = useState([]); // Stores past conversation summaries/IDs for the sidebar
   const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -30,18 +17,61 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
-  // Placeholder for loading conversations history (e.g., from localStorage)
+  // Load conversations from localStorage
   useEffect(() => {
-    // Example: Load conversations if needed
-    // const savedConversations = localStorage.getItem('conversations');
-    // if (savedConversations) {
-    //   setConversations(JSON.parse(savedConversations));
-    // }
-    // For now, add a default new chat
-    if (conversations.length === 0) {
-      setConversations([{ id: Date.now(), title: 'New Chat' }]);
+    const savedConversations = localStorage.getItem('conversations');
+    if (savedConversations) {
+      const parsedConversations = JSON.parse(savedConversations);
+      setConversations(parsedConversations);
+
+      // Set the current conversation to the most recent one
+      if (parsedConversations.length > 0) {
+        const latestConvo = parsedConversations[parsedConversations.length - 1];
+        setCurrentConversationId(latestConvo.id);
+
+        // Load the messages for this conversation
+        const savedMessages = localStorage.getItem(`messages-${latestConvo.id}`);
+        if (savedMessages) {
+          setMessages(JSON.parse(savedMessages));
+        }
+      }
+    } else {
+      // Create default conversation if none exists
+      const newId = Date.now();
+      const newConversations = [{ id: newId, title: 'New Chat' }];
+      setConversations(newConversations);
+      setCurrentConversationId(newId);
+      localStorage.setItem('conversations', JSON.stringify(newConversations));
     }
-  }, [conversations]); // Runs only once on mount
+  }, []); // Run only once on component mount
+
+  // Save conversations whenever they change
+  useEffect(() => {
+    if (conversations.length > 0) {
+      localStorage.setItem('conversations', JSON.stringify(conversations));
+    }
+  }, [conversations]);
+
+  // Save messages whenever they change
+  useEffect(() => {
+    if (currentConversationId && messages.length > 0) {
+      localStorage.setItem(`messages-${currentConversationId}`, JSON.stringify(messages));
+
+      // Update conversation title based on first user message if title is generic
+      if (messages.length >= 1 &&
+        conversations.find(c => c.id === currentConversationId)?.title.startsWith('New Chat')) {
+        const firstUserMessage = messages.find(m => m.role === 'user')?.content;
+        if (firstUserMessage) {
+          const shortTitle = firstUserMessage.substring(0, 30) + (firstUserMessage.length > 30 ? '...' : '');
+          setConversations(prev =>
+            prev.map(convo =>
+              convo.id === currentConversationId ? { ...convo, title: shortTitle } : convo
+            )
+          );
+        }
+      }
+    }
+  }, [messages, currentConversationId, conversations]);
 
   const handleInputChange = (event) => {
     setUserInput(event.target.value);
@@ -121,24 +151,37 @@ function App() {
     }
   };
 
-  // Placeholder function to switch conversations
+  // Function to switch conversations
   const handleSelectConversation = (id) => {
-    console.log("Switching to conversation:", id);
-    // In a real app, you would load the messages for the selected conversation ID
-    // setMessages(loadedMessages);
-    // For now, just clear messages for demo
-    setMessages([]);
+    // Save current messages before switching
+    if (currentConversationId && messages.length > 0) {
+      localStorage.setItem(`messages-${currentConversationId}`, JSON.stringify(messages));
+    }
+
+    // Load the selected conversation's messages
+    const savedMessages = localStorage.getItem(`messages-${id}`);
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    } else {
+      setMessages([]);
+    }
+
+    setCurrentConversationId(id);
   };
 
-  // Placeholder function to start a new chat
+  // Function to start a new chat
   const handleNewChat = () => {
-    const newId = Date.now();
-    setConversations(prev => [...prev, { id: newId, title: `New Chat ${prev.length + 1}` }]);
-    setMessages([]); // Start with empty messages
-    // Optionally select the new chat immediately
-    // handleSelectConversation(newId);
-  };
+    // Save current conversation messages
+    if (currentConversationId && messages.length > 0) {
+      localStorage.setItem(`messages-${currentConversationId}`, JSON.stringify(messages));
+    }
 
+    const newId = Date.now();
+    const newConvo = { id: newId, title: `New Chat` };
+    setConversations(prev => [...prev, newConvo]);
+    setMessages([]);
+    setCurrentConversationId(newId);
+  };
 
   return (
     <div className="app-container">
@@ -147,7 +190,11 @@ function App() {
         <button onClick={handleNewChat} className="new-chat-button">New Chat</button>
         <ul>
           {conversations.map((convo) => (
-            <li key={convo.id} onClick={() => handleSelectConversation(convo.id)}>
+            <li
+              key={convo.id}
+              onClick={() => handleSelectConversation(convo.id)}
+              className={convo.id === currentConversationId ? 'active' : ''}
+            >
               {convo.title}
             </li>
           ))}
