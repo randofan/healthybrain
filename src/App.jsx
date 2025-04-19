@@ -257,7 +257,7 @@ function App() {
       </aside>
       <main className="chat-window">
         <div className="messages-container">
-          {messages.filter((msg) => msg.role != 'system1').map((msg, index) => (
+          {messages.filter((msg) => msg.role != 'system').map((msg, index) => (
             <div key={index} className={`message-row ${msg.role}`}>
               <div className={`message-bubble ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                 {msg.content}
