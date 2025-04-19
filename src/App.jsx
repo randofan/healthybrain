@@ -3,16 +3,7 @@ import './App.css';
 
 // Mock conversation data
 const initialMockMessages = [
-  { role: 'user', content: 'Hello Llama!' },
-  { role: 'assistant', content: 'Hello! How can I help you today?' },
-  { role: 'user', content: 'Can you explain what a large language model is?' },
-  { role: 'assistant', content: 'A large language model (LLM) is a type of artificial intelligence algorithm that uses deep learning techniques and massively large data sets to understand, summarize, generate, and predict new content.' },
-  { role: 'user', content: 'That makes sense. What are some examples?' },
-  { role: 'assistant', content: 'Examples include models like me (Llama), GPT-4, Gemini, Claude, and others. They power applications like chatbots, content generation tools, and translation services.' },
-  { role: 'user', content: 'Interesting. How do they learn?' },
-  { role: 'assistant', content: 'They learn by being trained on vast amounts of text data from the internet and books. During training, they learn patterns, grammar, facts, and reasoning abilities.' },
-  { role: 'user', content: 'Thanks for the explanation!' },
-  { role: 'assistant', content: 'You\'re welcome! Is there anything else I can help you with?' },
+  { role: 'system', content: 'You are pretending to be a chicken. Do not speak in English' },
 ];
 
 function App() {
@@ -155,7 +146,7 @@ function App() {
       </aside>
       <main className="chat-window">
         <div className="messages-container">
-          {messages.map((msg, index) => (
+          {messages.filter((msg) => msg.role != 'system').map((msg, index) => (
             <div key={index} className={`message-row ${msg.role}`}>
               <div className={`message-bubble ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                 {msg.content}
