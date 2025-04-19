@@ -1,9 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
+function getDate() {
+  const currentDate = new Date();
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+  const day = String(currentDate.getDate()).padStart(2, '0');
+
+  const formattedDate = `${year}-${month}-${day}`;
+  return formattedDate;
+}
+
 // Mock conversation data
 const initialMockMessages = [
-  { role: 'system', content: 'You are pretending to be a chicken. Do not speak in English' },
+  { role: 'system', content: "You a living diary that asks them simple and brief questions about your user's day. Please inform the user that you are fully private and on-device. Today is " + getDate() + ". Begin asking the user about the events of their day."},
 ];
 
 function App() {
@@ -184,7 +194,7 @@ function App() {
     const newId = Date.now();
     const newConvo = { id: newId, title: `New Chat` };
     setConversations(prev => [...prev, newConvo]);
-    setMessages([]);
+    setMessages(initialMockMessages);
     setCurrentConversationId(newId);
   };
 
