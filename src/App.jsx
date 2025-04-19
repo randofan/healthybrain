@@ -143,7 +143,7 @@ function App() {
   return (
     <div className="app-container">
       <aside className="sidebar">
-        <h2>Journal Entries</h2>
+        <h2>Diary Entries</h2>
         <button onClick={handleNewChat} className="new-chat-button">New Chat</button>
         <ul>
           {conversations.map((convo) => (
@@ -157,7 +157,7 @@ function App() {
         <div className="messages-container">
           {messages.map((msg, index) => (
             <div key={index} className={`message-row ${msg.role}`}>
-              <div className="message-bubble">
+              <div className={`message-bubble ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                 {msg.content}
               </div>
             </div>
