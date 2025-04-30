@@ -26,6 +26,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const messagesEndRef = useRef(null);
+  // Add states for suicide prevention popup
+  const [showSuicidePopup, setShowSuicidePopup] = useState(false);
+  const [callStatus, setCallStatus] = useState('idle'); // idle, ringing, connected
+  const [callDuration, setCallDuration] = useState(0);
+  const timerRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -96,6 +101,43 @@ function App() {
     }
   }, [messages, currentConversationId, conversations]);
 
+  // Function to check for suicidal content
+  const checkForSuicidalContent = (text) => {
+    const suicidalPhrases = [
+      'kill myself', 'suicide', 'suicidal', 'end my life', 'don\'t want to live', 
+      'want to die', 'better off dead', 'no reason to live', 'can\'t go on',
+      'ending it all', 'take my own life', 'rather be dead', 'no point in living'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    return suicidalPhrases.some(phrase => lowerText.includes(phrase));
+  };
+
+  // Handle the simulated phone call
+  const startSuicideHotlineCall = () => {
+    setShowSuicidePopup(true);
+    setCallStatus('ringing');
+    
+    // Simulate ringing for 3 seconds then connect
+    setTimeout(() => {
+      setCallStatus('connected');
+      // Start the call timer
+      timerRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }, 3000);
+  };
+
+  // End the simulated call
+  const endSuicideHotlineCall = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    setShowSuicidePopup(false);
+    setCallStatus('idle');
+    setCallDuration(0);
+  };
+
   const handleInputChange = (event) => {
     setUserInput(event.target.value);
   };
@@ -103,6 +145,11 @@ function App() {
   const handleSendMessage = async (event) => {
     event.preventDefault();
     if (!userInput.trim() || isLoading) return;
+
+    // Check for suicidal content before sending
+    if (checkForSuicidalContent(userInput)) {
+      startSuicideHotlineCall();
+    }
 
     const newUserMessage = { role: 'user', content: userInput };
     const updatedMessages = [...messages, newUserMessage];
@@ -203,23 +250,75 @@ function App() {
       content: `Today is ${formattedTodayDate}`
     };
 
-    let ics_plaintext = ''
-    const res = await parseICS();
+    // Fetch and parse calendar data
+    setIsLoading(true);
+    try {
+      const calendarEvents = await parseICS();
+      
+      // Mock calendar data for testing
+      const mockEvents = "Calculus Midterm Exam at 10:00 AM in Room 204";
+      const calendarData = calendarEvents || mockEvents;
+      
+      // Prepare calendar events for the LLM
+      let calendarPrompt = "";
+      if (calendarData && calendarData.length > 0) {
+        calendarPrompt = "Based on their calendar, they had these events today:\n";
+        const events = calendarData.split('\n');
+        events.forEach(event => {
+          if (event.trim()) {
+            calendarPrompt += `- ${event.trim()}\n`;
+          }
+        });
+        calendarPrompt += "\nAsk specific questions about these events in their day.";
+      } else {
+        calendarPrompt = "No specific events found in their calendar for today. Ask general questions about their day.";
+      }
 
-    console.log(res + "ASDFASDF")
+      // System messages with specific event reference
+      const systemMessages = [
+        dateSystemMessage,
+        { 
+          role: 'system', 
+          content: `You are a living diary that asks the user simple and brief questions about their day. 
+Today is ${formattedTodayDate}.
 
-    // Mock conversation data
-    const initialInstruction = { role: 'system', content: "You a living diary that asks them simple and brief questions about your user's day. Please inform the user that you are fully private and on-device. Today is " + getDate() + ". Here is an ics file of their schedule that contains information on what they have done: " + res + ".\nBegin asking the user about the events of their day."};
+${calendarPrompt}
 
-    // Initialize the new chat with the system message
-    const newMessages = [dateSystemMessage, initialInstruction];
-    setMessages(newMessages);
+Start by greeting them briefly, then ask specifically about their calculus midterm.
+Keep your responses conversational and caring but concise.
+Ask follow-up questions based on their answers to create a meaningful reflection of their day.`
+        },
+        {
+          role: 'assistant',
+          content: `Hi! I'm your private, on-device diary. I see you had your calculus midterm exam this morning at 10 AM. How did the exam go? Were you well-prepared for it?`
+        }
+      ];
 
-    setConversations(prev => [...prev, newConvo]);
-    setCurrentConversationId(newId);
+      setMessages(systemMessages);
+      setConversations(prev => [...prev, newConvo]);
+      setCurrentConversationId(newId);
+      localStorage.setItem(`messages-${newId}`, JSON.stringify(systemMessages));
 
-    // Save the system message to localStorage for this conversation
-    localStorage.setItem(`messages-${newId}`, JSON.stringify(newMessages));
+    } catch (error) {
+      console.error('Error fetching calendar data:', error);
+      // Fallback if calendar data can't be loaded
+      const fallbackInstruction = { 
+        role: 'system', 
+        content: `You are a living diary that asks the user simple and brief questions about their day. 
+Please inform the user that you are fully private and on-device. 
+Today is ${formattedTodayDate}.
+
+Ask general questions about their day since no calendar data could be loaded.`
+      };
+      
+      const newMessages = [dateSystemMessage, fallbackInstruction];
+      setMessages(newMessages);
+      setConversations(prev => [...prev, newConvo]);
+      setCurrentConversationId(newId);
+      localStorage.setItem(`messages-${newId}`, JSON.stringify(newMessages));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Function to switch conversations
@@ -236,6 +335,13 @@ function App() {
     }
 
     setCurrentConversationId(id);
+  };
+
+  // Format time for the call duration display
+  const formatCallTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -257,7 +363,9 @@ function App() {
       </aside>
       <main className="chat-window">
         <div className="messages-container">
-          {messages.filter((msg) => msg.role != 'system').map((msg, index) => (
+          {messages
+            .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+            .map((msg, index) => (
             <div key={index} className={`message-row ${msg.role}`}>
               <div className={`message-bubble ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                 {msg.content}
@@ -286,6 +394,34 @@ function App() {
           <button type="submit" disabled={isLoading}>Send</button>
         </form>
       </main>
+
+      {/* Suicide Prevention Hotline Call Popup */}
+      {showSuicidePopup && (
+        <div className="suicide-prevention-popup">
+          <div className="popup-content">
+            <h2>National Suicide Prevention Lifeline</h2>
+            <div className="call-display">
+              {callStatus === 'ringing' ? (
+                <div className="ringing-animation">
+                  <p>Calling... 988</p>
+                  <div className="phone-icon">📞</div>
+                </div>
+              ) : (
+                <div className="on-call">
+                  <p>Connected with 988</p>
+                  <div className="call-timer">{formatCallTime(callDuration)}</div>
+                </div>
+              )}
+            </div>
+            <button onClick={endSuicideHotlineCall} className="end-call-button">
+              End Call
+            </button>
+            <p className="disclaimer">
+              This is a simulated call. If you're in crisis, please call the real National Suicide Prevention Lifeline at 988.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
